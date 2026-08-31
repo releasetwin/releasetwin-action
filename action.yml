@@ -69,6 +69,9 @@ runs:
           [ -n "$var" ] && args+=(-e "$var")
         done <<< "${{ inputs.env-vars }}"
 
+        # `shell: bash` in a composite action runs with `-e`; a case failure (exit 1) from
+        # the CLI must not abort this step before the render step gets to report it.
+        set +e
         docker run "${args[@]}" "${{ inputs.image }}" \
           "/workspace/${name}" --summary-json /out/releasetwin-summary.json
         code=$?
@@ -78,6 +81,8 @@ runs:
         exit 0
 
     - name: Render onto the pull request
+      # Report even if the run step itself crashed (e.g. the image could not be pulled).
+      if: always()
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
