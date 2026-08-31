@@ -1,0 +1,67 @@
+<!--
+SPDX-FileCopyrightText: 2026 Ernesto Alejo and the ReleaseTwin contributors
+SPDX-License-Identifier: Apache-2.0
+-->
+
+# ReleaseTwin PR annotations — GitHub Action
+
+Runs your ReleaseTwin case suite on a pull request and renders the result as:
+
+- a **PR comment** (created once, updated in place on every re-run — keyed by a hidden
+  marker), showing pass/fail totals, the flag-proof verdict, and a table of the notable cases
+- a **check run** named `ReleaseTwin` reporting the same outcome
+
+It uses only the workflow's own `GITHUB_TOKEN` and GitHub's REST API. **No ReleaseTwin
+account, API token, or hosted call is involved.** Execution stays entirely in your CI.
+
+This Action is **Apache-2.0** licensed (see `LICENSE`), independently of the ReleaseTwin
+engine's copyleft license — fork and adapt it freely.
+
+## Usage
+
+```yaml
+name: Release-proof gate
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write   # post/update the comment
+  checks: write          # create the check run
+
+jobs:
+  release-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ernestoalejowitt22/ReleaseTwin/integrations/github-action@v1
+        with:
+          cases-path: cases
+          image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.1.0   # pin a version
+```
+
+The step never fails the job on a case failure by itself — the check run is the gate. Make
+the `ReleaseTwin` check a required status check on your protected branch to block the merge.
+
+## Inputs
+
+| Input | Default | Notes |
+| --- | --- | --- |
+| `cases-path` | `cases` | Directory of case files, relative to the repo root. |
+| `image` | `…/cli:latest` | Pinned CLI container image. Pin a version tag in CI. |
+| `env-file` | — | Path to a `KEY=VALUE` file passed to the CLI container for `${ENV_VAR}` interpolation. Write it from CI secrets in a prior step. |
+| `env-vars` | — | Newline-separated variable **names** to forward from the job environment into the container. |
+| `comment` | `true` | Set `false` to skip the PR comment. |
+| `check` | `true` | Set `false` to skip the check run. |
+| `github-token` | `${{ github.token }}` | Token for the comment/check APIs. |
+
+## Requirements
+
+- A Linux runner with Docker and Node 20 (`ubuntu-latest` has both).
+- `permissions: pull-requests: write` and `checks: write` on the job or workflow.
+
+## Notes
+
+- Re-running on the same commit posts an additional check run (GitHub does not dedupe check
+  runs the way the comment is deduped); the latest is the one shown.
+- On a non-`pull_request` event the comment is skipped and only the check run is created.

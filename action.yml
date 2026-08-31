@@ -1,0 +1,91 @@
+# SPDX-FileCopyrightText: 2026 Ernesto Alejo and the ReleaseTwin contributors
+# SPDX-License-Identifier: Apache-2.0
+name: ReleaseTwin PR annotations
+description: >
+  Run ReleaseTwin cases and render the result onto the pull request as a comment and a
+  check run. Uses only the workflow's GITHUB_TOKEN — no ReleaseTwin account or hosted call.
+author: ReleaseTwin contributors
+branding:
+  icon: check-circle
+  color: green
+
+inputs:
+  cases-path:
+    description: Path (relative to the workspace) to the directory of case files to run.
+    required: false
+    default: cases
+  image:
+    description: Pinned ReleaseTwin CLI container image to run.
+    required: false
+    default: ghcr.io/ernestoalejowitt22/releasetwin/cli:latest
+  env-file:
+    description: >
+      Optional path to a file of KEY=VALUE lines passed to the CLI container (for
+      ${ENV_VAR} interpolation in case files). Populate it from CI secrets in a prior step.
+    required: false
+    default: ""
+  env-vars:
+    description: >
+      Optional newline-separated list of environment variable NAMES to forward from the
+      job environment into the CLI container.
+    required: false
+    default: ""
+  comment:
+    description: Post/update the pull-request comment.
+    required: false
+    default: "true"
+  check:
+    description: Create the check run.
+    required: false
+    default: "true"
+  github-token:
+    description: Token used for the PR comment and check-run APIs.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run ReleaseTwin
+      id: run
+      shell: bash
+      run: |
+        set -uo pipefail
+        summary="${RUNNER_TEMP}/releasetwin-summary.json"
+
+        # The documented layout is a cases directory with a sibling fixtures/ directory.
+        # Mount that parent as /workspace so ${cases}/../fixtures resolves inside the container.
+        cases_rel="${{ inputs.cases-path }}"
+        parent="$(dirname "${GITHUB_WORKSPACE}/${cases_rel}")"
+        name="$(basename "${cases_rel}")"
+
+        args=(--rm
+          -v "${parent}:/workspace:ro"
+          -v "${RUNNER_TEMP}:/out")
+        if [ -n "${{ inputs.env-file }}" ]; then
+          args+=(--env-file "${GITHUB_WORKSPACE}/${{ inputs.env-file }}")
+        fi
+        while IFS= read -r var; do
+          [ -n "$var" ] && args+=(-e "$var")
+        done <<< "${{ inputs.env-vars }}"
+
+        docker run "${args[@]}" "${{ inputs.image }}" \
+          "/workspace/${name}" --summary-json /out/releasetwin-summary.json
+        code=$?
+        echo "summary=${summary}" >> "$GITHUB_OUTPUT"
+        echo "exit-code=${code}" >> "$GITHUB_OUTPUT"
+        # Never fail this step on a case failure — the render step reports it.
+        exit 0
+
+    - name: Render onto the pull request
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        # On a pull_request event GITHUB_SHA is the ephemeral merge commit — the check run
+        # must land on the PR head so it shows as a PR status check.
+        RELEASETWIN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        RELEASETWIN_SUMMARY: ${{ steps.run.outputs.summary }}
+        RELEASETWIN_EXIT_CODE: ${{ steps.run.outputs.exit-code }}
+        RELEASETWIN_COMMENT: ${{ inputs.comment }}
+        RELEASETWIN_CHECK: ${{ inputs.check }}
+      run: node "${{ github.action_path }}/render.mjs"
