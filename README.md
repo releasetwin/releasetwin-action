@@ -34,11 +34,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ernestoalejowitt22/ReleaseTwin/integrations/github-action@v1
+      - uses: ernestoalejowitt22/ReleaseTwin/integrations/github-action@v0.2.0
         with:
           cases-path: cases
-          image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.1.0   # pin a version
+          image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0   # pin a released version
 ```
+
+**Pinning:** `@v0.2.0` (a full released version) is the recommended form for CI. `@v0` is a
+floating tag that is force-updated to the latest verified `0.x` release on every release —
+use it if you want patches picked up automatically. (At the 1.0 release the convenience ref
+becomes `@v1`.) The `image` input must reference a **publicly pullable** registry tag.
 
 The step never fails the job on a case failure by itself — the check run is the gate. Make
 the `ReleaseTwin` check a required status check on your protected branch to block the merge.

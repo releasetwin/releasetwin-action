@@ -15,7 +15,9 @@ inputs:
     required: false
     default: cases
   image:
-    description: Pinned ReleaseTwin CLI container image to run.
+    description: >
+      ReleaseTwin CLI container image to run. Must be a publicly pullable tag. Pin a
+      released version in CI (e.g. ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0).
     required: false
     default: ghcr.io/ernestoalejowitt22/releasetwin/cli:latest
   env-file:
