@@ -86,3 +86,8 @@ secrets into a job a fork PR can trigger.
 - Re-running on the same commit posts an additional check run (GitHub does not dedupe check
   runs the way the comment is deduped); the latest is the one shown.
 - On a non-`pull_request` event the comment is skipped and only the check run is created.
+- If you also forward `RELEASETWIN_API_TOKEN` / `RELEASETWIN_API_URL` to the CLI (via
+  `env-file` / `env-vars`), the run uploads to your hosted project and the annotation gains a
+  "View run" link plus per-case links to accepted evidence. Without them the comment and
+  check are exactly as shown above. Heed the fork-PR warning before forwarding an ingest
+  token.
