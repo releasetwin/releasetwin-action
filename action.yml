@@ -16,10 +16,14 @@ inputs:
     default: cases
   image:
     description: >
-      ReleaseTwin CLI container image to run. Must be a publicly pullable tag. Pin a
-      released version in CI (e.g. ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0).
+      ReleaseTwin CLI container image to run. Must be a publicly pullable reference. The
+      default is a pinned, immutable reference that the release workflow advances on each
+      tagged release; override it with your own released version or digest. A mutable tag
+      (`:latest`, a bare `:vN`) is accepted but logs a warning — see the README.
     required: false
-    default: ghcr.io/ernestoalejowitt22/releasetwin/cli:latest
+    # Immutable pin, rewritten by .github/workflows/release.yml on each tagged release
+    # (to the freshly built digest). Not managed by dependabot/renovate.
+    default: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0
   env-file:
     description: >
       Optional path to a file of KEY=VALUE lines passed to the CLI container (for
@@ -48,6 +52,18 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Warn on an unpinned image
+      shell: bash
+      run: |
+        img="${{ inputs.image }}"
+        # A digest (…@sha256:…) or a specific version tag (…:1.2.3) is fine. Warn on :latest,
+        # a bare major/minor tag (…:v1 / …:1.2), or a reference with no tag at all.
+        if [[ "$img" == *"@sha256:"* ]] || [[ "$img" =~ :[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Image is pinned: $img"
+        else
+          echo "::warning title=Unpinned ReleaseTwin CLI image::'$img' is a mutable reference. A re-tagged or compromised image would run in this job with access to any secrets you pass it. Pin a released version or digest (see the action README)."
+        fi
+
     - name: Run ReleaseTwin
       id: run
       shell: bash
