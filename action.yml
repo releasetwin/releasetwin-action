@@ -23,7 +23,7 @@ inputs:
     required: false
     # Immutable pin, rewritten by .github/workflows/release.yml on each tagged release
     # (to the freshly built digest). Not managed by dependabot/renovate.
-    default: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0
+    default: ghcr.io/ernestoalejowitt22/releasetwin/cli@sha256:7fff00295e6da3d3a18e010f438c4d266fe44760aeadacff9f80d7ea91fd301c
   env-file:
     description: >
       Optional path to a file of KEY=VALUE lines passed to the CLI container (for
