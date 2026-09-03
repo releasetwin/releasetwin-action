@@ -17,6 +17,11 @@ account, API token, or hosted call is involved.** Execution stays entirely in yo
 This Action is **Apache-2.0** licensed (see `LICENSE`), independently of the ReleaseTwin
 engine's copyleft license — fork and adapt it freely.
 
+> **On GitLab?** Use [`integrations/gitlab-component/`](../gitlab-component/) — a GitLab
+> CI/CD Component that feeds the run into the native merge-request test widget. Other
+> platforms (Bitbucket, CircleCI, Azure Pipelines, Jenkins) consume the CLI's
+> `--junit-xml` output directly — see [`docs/ci.md`](../../docs/ci.md).
+
 ## Usage
 
 ```yaml
