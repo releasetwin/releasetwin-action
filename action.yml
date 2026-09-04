@@ -44,6 +44,12 @@ inputs:
     description: Create the check run.
     required: false
     default: "true"
+  attribution:
+    description: >
+      Include a footer link to the ReleaseTwin product site on the pull-request comment.
+      Never affects the check run. Set to "false" to omit it.
+    required: false
+    default: "true"
   github-token:
     description: Token used for the PR comment and check-run APIs.
     required: false
@@ -111,4 +117,5 @@ runs:
         RELEASETWIN_EXIT_CODE: ${{ steps.run.outputs.exit-code }}
         RELEASETWIN_COMMENT: ${{ inputs.comment }}
         RELEASETWIN_CHECK: ${{ inputs.check }}
+        RELEASETWIN_ATTRIBUTION: ${{ inputs.attribution }}
       run: node "${{ github.action_path }}/render.mjs"

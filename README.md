@@ -5,6 +5,9 @@ SPDX-License-Identifier: Apache-2.0
 
 # ReleaseTwin PR annotations — GitHub Action
 
+**[releasetwin.com](https://releasetwin.com)** — release-proof testing for
+integration-heavy, feature-flagged systems.
+
 Runs your ReleaseTwin case suite on a pull request and renders the result as:
 
 - a **PR comment** (created once, updated in place on every re-run — keyed by a hidden
@@ -79,6 +82,7 @@ secrets into a job a fork PR can trigger.
 | `env-vars` | — | Newline-separated variable **names** to forward from the job environment into the container. |
 | `comment` | `true` | Set `false` to skip the PR comment. |
 | `check` | `true` | Set `false` to skip the check run. |
+| `attribution` | `true` | Set `false` to omit the footer link to releasetwin.com on the PR comment. Never affects the check run. |
 | `github-token` | `${{ github.token }}` | Token for the comment/check APIs. |
 
 ## Requirements

@@ -10,10 +10,17 @@ import { pathToFileURL } from "node:url";
 
 export const MARKER = "<!-- releasetwin-summary -->";
 const API = "https://api.github.com";
+// outbound-attribution-links: footer link on the rendered comment, not the check run.
+const PRODUCT_URL = "https://releasetwin.com";
 
 // ---- pure rendering (exported for tests) ------------------------------------
 
-export function renderBody(s) {
+export function renderBody(s, { attribution = true } = {}) {
+  const body = renderVerdict(s);
+  return attribution ? `${body}\n\n---\n[ReleaseTwin](${PRODUCT_URL})` : body;
+}
+
+function renderVerdict(s) {
   if (!s) {
     return `${MARKER}\n## ReleaseTwin\n\n:x: The run produced no summary — check the job log.`;
   }
@@ -120,9 +127,13 @@ async function main() {
   const summaryPath = required("RELEASETWIN_SUMMARY");
   const wantComment = (process.env.RELEASETWIN_COMMENT ?? "true") !== "false";
   const wantCheck = (process.env.RELEASETWIN_CHECK ?? "true") !== "false";
+  const wantAttribution = (process.env.RELEASETWIN_ATTRIBUTION ?? "true") !== "false";
 
   const summary = readSummary(summaryPath);
-  const body = renderBody(summary);
+  // The check run carries no attribution content regardless of the attribution input —
+  // only the PR comment is a growth surface.
+  const commentBody = renderBody(summary, { attribution: wantAttribution });
+  const checkBody = renderBody(summary, { attribution: false });
   const pr = pullNumber();
 
   if (wantComment) {
@@ -130,10 +141,10 @@ async function main() {
       const comments = await gh(token, `/repos/${owner}/${repo}/issues/${pr}/comments?per_page=100`);
       const existing = comments.find((c) => typeof c.body === "string" && c.body.includes(MARKER));
       if (existing) {
-        await gh(token, `/repos/${owner}/${repo}/issues/comments/${existing.id}`, "PATCH", { body });
+        await gh(token, `/repos/${owner}/${repo}/issues/comments/${existing.id}`, "PATCH", { body: commentBody });
         console.log(`Updated comment ${existing.id}`);
       } else {
-        await gh(token, `/repos/${owner}/${repo}/issues/${pr}/comments`, "POST", { body });
+        await gh(token, `/repos/${owner}/${repo}/issues/${pr}/comments`, "POST", { body: commentBody });
         console.log("Created comment");
       }
     } else {
@@ -141,7 +152,7 @@ async function main() {
     }
   }
   if (wantCheck) {
-    const check = checkPayload(summary, body, sha);
+    const check = checkPayload(summary, checkBody, sha);
     await gh(token, `/repos/${owner}/${repo}/check-runs`, "POST", check);
     console.log(`Created check run (${check.conclusion})`);
   }

@@ -64,3 +64,23 @@ test("a missing summary renders the no-summary body and a failure check", () => 
   assert.equal(check.conclusion, "failure");
   assert.equal(check.output.title, "No run summary");
 });
+
+test("attribution is on by default and links the product site", () => {
+  const body = renderBody(v1);
+  assert.ok(body.includes("[ReleaseTwin](https://releasetwin.com)"));
+});
+
+test("attribution: false omits the product-site link, body otherwise unchanged", () => {
+  const withAttribution = renderBody(v1, { attribution: true });
+  const withoutAttribution = renderBody(v1, { attribution: false });
+  assert.ok(!withoutAttribution.includes("releasetwin.com"));
+  assert.ok(withAttribution.startsWith(withoutAttribution));
+});
+
+test("the check payload carries no attribution content regardless of the option", () => {
+  const attributedBody = renderBody(v1, { attribution: true });
+  const checkBody = renderBody(v1, { attribution: false });
+  const check = checkPayload(v1, checkBody, "abc123");
+  assert.ok(!check.output.summary.includes("releasetwin.com"));
+  assert.notEqual(checkBody, attributedBody);
+});
