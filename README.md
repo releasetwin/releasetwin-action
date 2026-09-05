@@ -42,11 +42,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ernestoalejowitt22/ReleaseTwin/integrations/github-action@v0.2.0
+      - uses: ernestoalejowitt22/releasetwin-action@v0.2.0
         with:
           cases-path: cases
           image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0   # pin a released version
 ```
+
+**Two published forms, same code.** `ernestoalejowitt22/releasetwin-action` is a
+release-time mirror of this directory published at its own repo root so it can carry a
+GitHub Marketplace listing — GitHub only allows a listing when `action.yml` sits at a
+repo's root. The subdirectory form,
+`ernestoalejowitt22/ReleaseTwin/integrations/github-action@v0.2.0`, still works
+identically for anyone already pinned to it; this directory is the source of truth either
+way.
 
 **Pinning:** `@v0.2.0` (a full released version) is the recommended form for CI. `@v0` is a
 floating tag that is force-updated to the latest verified `0.x` release on every release —
