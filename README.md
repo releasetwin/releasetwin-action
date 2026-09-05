@@ -91,7 +91,8 @@ secrets into a job a fork PR can trigger.
 | `comment` | `true` | Set `false` to skip the PR comment. |
 | `check` | `true` | Set `false` to skip the check run. |
 | `attribution` | `true` | Set `false` to omit the footer link to releasetwin.com on the PR comment. Never affects the check run. |
-| `github-token` | `${{ github.token }}` | Token for the comment/check APIs. |
+| `github-token` | `${{ github.token }}` | Token for the comment/check APIs, and for ticket write-back when enabled. |
+| `ticket-write-back` | `false` | Set `true` to also post evidence as a comment on the GitHub Issue named by a case's `oracle.locator`. |
 
 ## Requirements
 
@@ -103,6 +104,14 @@ secrets into a job a fork PR can trigger.
 - Re-running on the same commit posts an additional check run (GitHub does not dedupe check
   runs the way the comment is deduped); the latest is the one shown.
 - On a non-`pull_request` event the comment is skipped and only the check run is created.
+- With `ticket-write-back: true`, a case whose `oracle.locator` is a bare `#123` gets a
+  comment on issue 123 in this repository naming the case, its outcome, and a link to its
+  evidence (or the run's dashboard link, if any) — in addition to, not instead of, the PR
+  comment/check run. A locator that doesn't match that convention (a Jira-style key, free
+  text, none at all) is left alone — no attempt, no error. A failed write-back (issue
+  doesn't exist, token lacks permission) is logged as a `::warning::` and never affects the
+  job's own pass/fail outcome. See [`docs/ci.md`](../../docs/ci.md) for the full picture,
+  including Bitbucket and Azure Boards support (tracked separately, not yet shipped).
 - If you also forward `RELEASETWIN_API_TOKEN` / `RELEASETWIN_API_URL` to the CLI (via
   `env-file` / `env-vars`), the run uploads to your hosted project and the annotation gains a
   "View run" link plus per-case links to accepted evidence. Without them the comment and

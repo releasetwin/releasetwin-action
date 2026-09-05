@@ -51,9 +51,18 @@ inputs:
     required: false
     default: "true"
   github-token:
-    description: Token used for the PR comment and check-run APIs.
+    description: >
+      Token used for the PR comment and check-run APIs, and for ticket write-back when
+      enabled. Needs no scope beyond the default same-repo GITHUB_TOKEN permissions.
     required: false
     default: ${{ github.token }}
+  ticket-write-back:
+    description: >
+      Post evidence to the GitHub Issue named by a case's oracle.locator (a bare `#123`
+      resolved against this repository). Disabled by default. A locator that doesn't match
+      that convention is skipped, not treated as an error.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -118,4 +127,5 @@ runs:
         RELEASETWIN_COMMENT: ${{ inputs.comment }}
         RELEASETWIN_CHECK: ${{ inputs.check }}
         RELEASETWIN_ATTRIBUTION: ${{ inputs.attribution }}
+        RELEASETWIN_TICKET_WRITE_BACK: ${{ inputs.ticket-write-back }}
       run: node "${{ github.action_path }}/render.mjs"

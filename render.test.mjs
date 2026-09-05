@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderBody, checkPayload, MARKER } from "./render.mjs";
+import { renderBody, checkPayload, MARKER, parseGithubIssueLocator, renderTicketComment } from "./render.mjs";
 
 const v1 = {
   schemaVersion: 1,
@@ -83,4 +83,38 @@ test("the check payload carries no attribution content regardless of the option"
   const check = checkPayload(v1, checkBody, "abc123");
   assert.ok(!check.output.summary.includes("releasetwin.com"));
   assert.notEqual(checkBody, attributedBody);
+});
+
+// ticket-evidence-write-back
+
+test("a bare #123 locator resolves to that issue number", () => {
+  assert.equal(parseGithubIssueLocator("#42"), 42);
+});
+
+test("a non-GitHub-style locator does not resolve", () => {
+  assert.equal(parseGithubIssueLocator("PROJ-456"), null);
+  assert.equal(parseGithubIssueLocator("see design doc"), null);
+  assert.equal(parseGithubIssueLocator(undefined), null);
+  assert.equal(parseGithubIssueLocator(null), null);
+});
+
+test("ticket comment names the case, outcome, and evidence link", () => {
+  const s = { runUrl: "https://app.example.com/dashboard?projectId=p" };
+  const c = { id: "BAD-1", outcome: "failed", evidenceUrl: "https://app.example.com/dashboard/reports/r/evidence?projectId=p" };
+  const body = renderTicketComment(s, c);
+  assert.ok(body.includes("`BAD-1`"));
+  assert.ok(body.includes("failed"));
+  assert.ok(body.includes("https://app.example.com/dashboard/reports/r/evidence?projectId=p"));
+});
+
+test("ticket comment falls back to the run URL when the case has no evidence URL", () => {
+  const s = { runUrl: "https://app.example.com/dashboard?projectId=p" };
+  const c = { id: "OK-1", outcome: "passed" };
+  const body = renderTicketComment(s, c);
+  assert.ok(body.includes("https://app.example.com/dashboard?projectId=p"));
+});
+
+test("ticket comment omits an evidence link when neither is available", () => {
+  const body = renderTicketComment(null, { id: "OK-1", outcome: "passed" });
+  assert.ok(!body.includes("http"));
 });

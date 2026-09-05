@@ -52,6 +52,25 @@ function renderVerdict(s) {
   return lines.join("\n");
 }
 
+// ---- ticket-evidence-write-back ---------------------------------------------
+
+const ISSUE_LOCATOR = /^#(\d+)$/;
+
+// A case's oracle.locator resolves to a GitHub issue in this run's own repository only when
+// it matches this bare `#123` convention. Anything else (a Jira-style key, free text, no
+// locator at all) is left alone — no write-back attempt, no error.
+export function parseGithubIssueLocator(locator) {
+  const m = typeof locator === "string" ? locator.match(ISSUE_LOCATOR) : null;
+  return m ? Number(m[1]) : null;
+}
+
+export function renderTicketComment(s, c) {
+  const icon = c.outcome === "passed" ? ":white_check_mark:" : ":x:";
+  const evidenceUrl = c.evidenceUrl ?? s?.runUrl;
+  const evidenceLine = evidenceUrl ? ` — [evidence](${evidenceUrl})` : "";
+  return `ReleaseTwin ${icon} \`${c.id}\` (${c.outcome})${evidenceLine}`;
+}
+
 export function checkPayload(s, body, sha) {
   const conclusion = s && s.overall === "passed" ? "success" : "failure";
   const check = {
@@ -107,6 +126,21 @@ function readSummary(summaryPath) {
   }
 }
 
+async function postTicketWriteBack(token, owner, repo, summary) {
+  for (const c of summary?.cases ?? []) {
+    const issue = parseGithubIssueLocator(c.oracleLocator);
+    if (issue === null) continue;
+    try {
+      await gh(token, `/repos/${owner}/${repo}/issues/${issue}/comments`, "POST", { body: renderTicketComment(summary, c) });
+      console.log(`Posted ticket write-back to issue #${issue} for ${c.id}`);
+    } catch (e) {
+      // Ticket write-back failure is a warning, not a run failure — the CLI's own
+      // pass/fail verdict for the case is unaffected either way.
+      console.log(`::warning::ticket write-back to issue #${issue} for ${c.id} failed: ${e.message}`);
+    }
+  }
+}
+
 function pullNumber() {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) return null;
@@ -128,6 +162,7 @@ async function main() {
   const wantComment = (process.env.RELEASETWIN_COMMENT ?? "true") !== "false";
   const wantCheck = (process.env.RELEASETWIN_CHECK ?? "true") !== "false";
   const wantAttribution = (process.env.RELEASETWIN_ATTRIBUTION ?? "true") !== "false";
+  const wantTicketWriteBack = (process.env.RELEASETWIN_TICKET_WRITE_BACK ?? "false") === "true";
 
   const summary = readSummary(summaryPath);
   // The check run carries no attribution content regardless of the attribution input —
@@ -155,6 +190,9 @@ async function main() {
     const check = checkPayload(summary, checkBody, sha);
     await gh(token, `/repos/${owner}/${repo}/check-runs`, "POST", check);
     console.log(`Created check run (${check.conclusion})`);
+  }
+  if (wantTicketWriteBack) {
+    await postTicketWriteBack(token, owner, repo, summary);
   }
 
   // Mirror the CLI's own verdict as this action's exit code.
