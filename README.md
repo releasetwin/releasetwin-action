@@ -42,13 +42,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ernestoalejowitt22/releasetwin-action@v0.2.0
+      - uses: releasetwin/releasetwin-action@v0.2.0
         with:
           cases-path: cases
           image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0   # pin a released version
 ```
 
-**Two published forms, same code.** `ernestoalejowitt22/releasetwin-action` is a
+**Two published forms, same code.** `releasetwin/releasetwin-action` is a
 release-time mirror of this directory published at its own repo root so it can carry a
 GitHub Marketplace listing — GitHub only allows a listing when `action.yml` sits at a
 repo's root. The subdirectory form,
