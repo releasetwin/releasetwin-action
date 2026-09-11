@@ -93,6 +93,8 @@ secrets into a job a fork PR can trigger.
 | `attribution` | `true` | Set `false` to omit the footer link to releasetwin.com on the PR comment. Never affects the check run. |
 | `github-token` | `${{ github.token }}` | Token for the comment/check APIs, and for ticket write-back when enabled. |
 | `ticket-write-back` | `false` | Set `true` to also post evidence as a comment on the GitHub Issue named by a case's `oracle.locator`. |
+| `evidence` | `false` | Set `true` to capture this run's evidence on the runner and upload the single-file HTML report as a workflow artifact. |
+| `evidence-artifact-name` | `releasetwin-evidence` | Name of the uploaded evidence artifact. |
 
 ## Requirements
 
@@ -112,6 +114,16 @@ secrets into a job a fork PR can trigger.
   doesn't exist, token lacks permission) is logged as a `::warning::` and never affects the
   job's own pass/fail outcome. See [`docs/ci.md`](../../docs/ci.md) for the full picture,
   including Bitbucket and Azure Boards support (tracked separately, not yet shipped).
+- With `evidence: true`, the run captures its redacted evidence into the runner's temporary
+  directory — never into your checked-out workspace, which the Action mounts read-only — and
+  uploads `releasetwin view --export`'s single self-contained HTML file as a workflow artifact.
+  Download it from the run's Summary page and open it in a browser: it carries the per-case
+  step-by-step record and its screenshots inline, with no server and no network access.
+  **Evidence stays on the runner.** Nothing is sent to a hosted service, no ReleaseTwin
+  account or API token is involved, and the artifact's retention follows your repository's own
+  artifact settings. Capture, export, and upload are all best-effort: if any of them fails it
+  is logged as a `::warning::` and the run's pass/fail outcome, the PR comment, the check run,
+  and the job's conclusion are all unchanged.
 - If you also forward `RELEASETWIN_API_TOKEN` / `RELEASETWIN_API_URL` to the CLI (via
   `env-file` / `env-vars`), the run uploads to your hosted project and the annotation gains a
   "View run" link plus per-case links to accepted evidence. Without them the comment and

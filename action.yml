@@ -56,6 +56,18 @@ inputs:
       enabled. Needs no scope beyond the default same-repo GITHUB_TOKEN permissions.
     required: false
     default: ${{ github.token }}
+  evidence:
+    description: >
+      Capture this run's evidence on the runner and upload the single-file HTML report as a
+      workflow artifact. Off by default. Evidence stays on the runner: it is written to the
+      runner's temporary directory and leaves only as a workflow artifact — nothing is sent
+      to a hosted service, and no ReleaseTwin account or token is involved.
+    required: false
+    default: "false"
+  evidence-artifact-name:
+    description: Name of the uploaded evidence artifact.
+    required: false
+    default: releasetwin-evidence
   ticket-write-back:
     description: >
       Post evidence to the GitHub Issue named by a case's oracle.locator (a bare `#123`
@@ -95,6 +107,12 @@ runs:
         args=(--rm
           -v "${parent}:/workspace:ro"
           -v "${RUNNER_TEMP}:/out")
+        # local-evidence-viewer (design D8): RUNNER_TEMP is already mounted as /out and the
+        # workspace is mounted read-only, so capturing evidence needs no new mount — only the two
+        # environment variables. Capture writes to the runner's temp space, never the workspace.
+        if [ "${{ inputs.evidence }}" = "true" ]; then
+          args+=(-e RELEASETWIN_EVIDENCE=on -e RELEASETWIN_EVIDENCE_DIR=/out/releasetwin-evidence)
+        fi
         if [ -n "${{ inputs.env-file }}" ]; then
           args+=(--env-file "${GITHUB_WORKSPACE}/${{ inputs.env-file }}")
         fi
@@ -129,3 +147,36 @@ runs:
         RELEASETWIN_ATTRIBUTION: ${{ inputs.attribution }}
         RELEASETWIN_TICKET_WRITE_BACK: ${{ inputs.ticket-write-back }}
       run: node "${{ github.action_path }}/render.mjs"
+
+    - name: Export the evidence report
+      id: evidence
+      # Best-effort throughout: this runs after the verdict is already decided, and nothing it does
+      # may change that verdict, the comment, the check run, or the job's conclusion.
+      if: always() && inputs.evidence == 'true'
+      shell: bash
+      run: |
+        set +e
+        export_path="${RUNNER_TEMP}/releasetwin-evidence.html"
+        if [ ! -d "${RUNNER_TEMP}/releasetwin-evidence" ]; then
+          echo "::notice title=ReleaseTwin evidence::The run produced no evidence directory, so there is nothing to upload."
+          exit 0
+        fi
+
+        docker run --rm -v "${RUNNER_TEMP}:/out" "${{ inputs.image }}" \
+          view /out/releasetwin-evidence --export /out/releasetwin-evidence.html
+        if [ $? -ne 0 ] || [ ! -f "$export_path" ]; then
+          echo "::warning title=ReleaseTwin evidence::Could not export the evidence report. The run's own result is unaffected."
+          exit 0
+        fi
+
+        echo "file=${export_path}" >> "$GITHUB_OUTPUT"
+        exit 0
+
+    - name: Upload the evidence report
+      if: always() && inputs.evidence == 'true' && steps.evidence.outputs.file != ''
+      continue-on-error: true
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.evidence-artifact-name }}
+        path: ${{ steps.evidence.outputs.file }}
+        if-no-files-found: warn
