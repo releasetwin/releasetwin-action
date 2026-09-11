@@ -49,6 +49,12 @@ function renderVerdict(s) {
       lines.push(`| ${id} | ${c.outcome} | ${c.classification ?? "—"} | ${c.flagProof ?? "—"} | ${c.release ?? "—"} |`);
     }
   }
+  // mcp-server: on a failed run that uploaded to a hosted project, point the reader at the
+  // agent path — releasetwin-mcp can read this run's evidence over the programmatic API, so
+  // "why did this fail" is one question to their coding agent rather than a dashboard visit.
+  if (s.overall !== "passed" && s.runUrl) {
+    lines.push("", `Ask your agent: \`npx releasetwin-mcp\` reads this run's evidence — [set it up](${PRODUCT_URL}/docs/mcp).`);
+  }
   return lines.join("\n");
 }
 
