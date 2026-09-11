@@ -118,3 +118,11 @@ test("ticket comment omits an evidence link when neither is available", () => {
   const body = renderTicketComment(null, { id: "OK-1", outcome: "passed" });
   assert.ok(!body.includes("http"));
 });
+
+test("a failed run with a runUrl carries the agent hint; a passing or unlinked run does not", () => {
+  const failed = { ...v1, overall: "failed", runUrl: "https://releasetwin.com/dashboard?projectId=p" };
+  assert.match(renderBody(failed), /Ask your agent: `npx releasetwin-mcp`/);
+  assert.match(renderBody(failed), /\/docs\/mcp\)/);
+  assert.doesNotMatch(renderBody({ ...failed, overall: "passed" }), /Ask your agent/);
+  assert.doesNotMatch(renderBody({ ...failed, runUrl: undefined }), /Ask your agent/);
+});
