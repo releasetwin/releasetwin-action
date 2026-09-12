@@ -36,6 +36,19 @@ inputs:
       job environment into the CLI container.
     required: false
     default: ""
+  project-id:
+    description: >
+      The hosted ReleaseTwin project this run uploads to (the id in the project's dashboard
+      URL). With `permissions: id-token: write` on the job, the CLI exchanges the job's own
+      GitHub OIDC token for a short-lived upload credential — no stored secret. The project
+      must be bound to this repository on its Settings page. Leave empty to upload nothing
+      (or forward RELEASETWIN_API_TOKEN via env-vars / env-file for a stored token).
+    required: false
+    default: ""
+  api-url:
+    description: The hosted API base URL. Only change this for a self-hosted platform.
+    required: false
+    default: https://api.releasetwin.com
   comment:
     description: Post/update the pull-request comment.
     required: false
@@ -119,6 +132,17 @@ runs:
         while IFS= read -r var; do
           [ -n "$var" ] && args+=(-e "$var")
         done <<< "${{ inputs.env-vars }}"
+
+        # github-oidc-upload: with `permissions: id-token: write` GitHub sets these two on the
+        # job; forwarding them lets the CLI mint and exchange the job's OIDC token itself. They
+        # are absent on fork PRs and on jobs without the permission, and harmless to forward.
+        for var in ACTIONS_ID_TOKEN_REQUEST_URL ACTIONS_ID_TOKEN_REQUEST_TOKEN; do
+          [ -n "${!var:-}" ] && args+=(-e "$var")
+        done
+        if [ -n "${{ inputs.project-id }}" ]; then
+          args+=(-e "RELEASETWIN_PROJECT_ID=${{ inputs.project-id }}")
+        fi
+        args+=(-e "RELEASETWIN_API_URL=${{ inputs.api-url }}")
 
         # `shell: bash` in a composite action runs with `-e`; a case failure (exit 1) from
         # the CLI must not abort this step before the render step gets to report it.

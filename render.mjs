@@ -38,6 +38,15 @@ function renderVerdict(s) {
     `Flag proof: **${fp.proven}** proven · ${fp.ineligible} ineligible · **${fp.regressed}** regressed`,
   ];
 
+  // github-oidc-upload: the CLI stopped before running anything because the job asked to
+  // upload with its GitHub identity and could not. Say why on the PR, not only in the log.
+  if (s.upload?.mode === "oidc-exchange-failed") {
+    lines.push(
+      "",
+      `:warning: **Hosted upload could not authenticate** — ${s.upload.reason ?? "see the job log"} ([how to set up token-free upload](${PRODUCT_URL}/docs/ci#github-oidc))`,
+    );
+  }
+
   const notable = (s.cases ?? []).filter(
     (c) => c.outcome === "failed" || (c.flagProof && c.flagProof !== "Ineligible" && c.flagProof !== "Passed") || c.flagProof === "Passed",
   );

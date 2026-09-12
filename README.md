@@ -36,27 +36,40 @@ permissions:
   contents: read
   pull-requests: write   # post/update the comment
   checks: write          # create the check run
+  id-token: write        # lets the job upload to the hosted dashboard with its own identity
 
 jobs:
   release-proof:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: releasetwin/releasetwin-action@v0.2.0
+      - uses: releasetwin/releasetwin-action@v0.4.0
         with:
           cases-path: cases
-          image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.2.0   # pin a released version
+          image: ghcr.io/ernestoalejowitt22/releasetwin/cli:0.4.0   # pin a released version
+          project-id: 11111111-1111-1111-1111-111111111111        # your hosted project — no secret needed
 ```
+
+**No stored secret.** With `id-token: write` and a `project-id`, the CLI trades the job's GitHub
+OIDC token for a short-lived, ingest-only credential at `api.releasetwin.com`. The project must
+be bound to this repository on its Settings page: neither a project that claims your repo nor a
+repo that names someone else's project can route an upload anywhere it should not go. If the
+permission is missing or the exchange is refused, the run stops, the job log names the fix, and
+the PR comment shows the reason. Fork PRs get no OIDC token from GitHub and simply upload nothing.
+Leave `project-id` empty for a run-only gate with no upload.
+
+**Without OIDC** (another CI, or a stored token by choice): forward `RELEASETWIN_API_TOKEN` via
+`env-vars` or `env-file`; a stored token always wins when both are present.
 
 **Two published forms, same code.** `releasetwin/releasetwin-action` is a
 release-time mirror of this directory published at its own repo root so it can carry a
 GitHub Marketplace listing — GitHub only allows a listing when `action.yml` sits at a
 repo's root. The subdirectory form,
-`ernestoalejowitt22/ReleaseTwin/integrations/github-action@v0.2.0`, still works
+`ernestoalejowitt22/ReleaseTwin/integrations/github-action@v0.4.0`, still works
 identically for anyone already pinned to it; this directory is the source of truth either
 way.
 
-**Pinning:** `@v0.2.0` (a full released version) is the recommended form for CI. `@v0` is a
+**Pinning:** `@v0.4.0` (a full released version) is the recommended form for CI. `@v0` is a
 floating tag that is force-updated to the latest verified `0.x` release on every release —
 use it if you want patches picked up automatically. (At the 1.0 release the convenience ref
 becomes `@v1`.)
@@ -64,7 +77,7 @@ becomes `@v1`.)
 The `image` input must reference a **publicly pullable** image. Its default is a pinned,
 immutable reference that the release workflow advances to a fresh digest on every release —
 the Action never runs `:latest`. If you override `image`, pin your own released version
-(`…/cli:0.3.0`) or a digest (`…/cli@sha256:…`); a mutable tag still runs but logs a
+(`…/cli:0.4.0`) or a digest (`…/cli@sha256:…`); a mutable tag still runs but logs a
 `::warning::` — a re-tagged or compromised image would run in your job with access to
 whatever you pass it.
 
@@ -88,6 +101,8 @@ secrets into a job a fork PR can trigger.
 | `image` | pinned digest (release-managed) | CLI container image. Override with your own `…/cli:X.Y.Z` or `…/cli@sha256:…`; a mutable tag logs a warning. |
 | `env-file` | — | Path to a `KEY=VALUE` file passed to the CLI container for `${ENV_VAR}` interpolation. Write it from CI secrets in a prior step. |
 | `env-vars` | — | Newline-separated variable **names** to forward from the job environment into the container. |
+| `project-id` | — | Hosted project to upload to, using the job's GitHub OIDC identity (`permissions: id-token: write`). Empty = no upload unless a stored token is forwarded. |
+| `api-url` | `https://api.releasetwin.com` | Hosted API base URL. Only for a self-hosted platform. |
 | `comment` | `true` | Set `false` to skip the PR comment. |
 | `check` | `true` | Set `false` to skip the check run. |
 | `attribution` | `true` | Set `false` to omit the footer link to releasetwin.com on the PR comment. Never affects the check run. |
@@ -124,8 +139,8 @@ secrets into a job a fork PR can trigger.
   artifact settings. Capture, export, and upload are all best-effort: if any of them fails it
   is logged as a `::warning::` and the run's pass/fail outcome, the PR comment, the check run,
   and the job's conclusion are all unchanged.
-- If you also forward `RELEASETWIN_API_TOKEN` / `RELEASETWIN_API_URL` to the CLI (via
-  `env-file` / `env-vars`), the run uploads to your hosted project and the annotation gains a
-  "View run" link plus per-case links to accepted evidence. Without them the comment and
-  check are exactly as shown above. Heed the fork-PR warning before forwarding an ingest
-  token.
+- When the run uploads to your hosted project — via `project-id` + `id-token: write`, or a
+  forwarded `RELEASETWIN_API_TOKEN` — the annotation gains a "View run" link plus per-case
+  links to accepted evidence. Without an upload the comment and check are exactly as shown
+  above. Heed the fork-PR warning before forwarding a stored ingest token; the OIDC path
+  needs no secret and is the recommended one on GitHub.

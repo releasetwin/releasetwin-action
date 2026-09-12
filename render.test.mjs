@@ -118,3 +118,26 @@ test("ticket comment omits an evidence link when neither is available", () => {
   const body = renderTicketComment(null, { id: "OK-1", outcome: "passed" });
   assert.ok(!body.includes("http"));
 });
+
+// github-oidc-upload: a run that could not authenticate its upload says why on the PR.
+test("a failed OIDC exchange is explained on the comment with a setup link", () => {
+  const s = {
+    schemaVersion: 4,
+    overall: "failed",
+    totals: { passed: 0, failed: 0, cases: 0 },
+    flagProof: { proven: 0, ineligible: 0, regressed: 0 },
+    cases: [],
+    upload: { mode: "oidc-exchange-failed", reason: "RELEASETWIN_PROJECT_ID is set but this job has no GitHub OIDC token to exchange. Add `permissions: id-token: write` to the job." },
+  };
+  const body = renderBody(s);
+  assert.ok(body.includes("Hosted upload could not authenticate"));
+  assert.ok(body.includes("id-token: write"));
+  assert.ok(body.includes("https://releasetwin.com/docs/ci#github-oidc"));
+  assert.equal(checkPayload(s, body, "abc").conclusion, "failure");
+});
+
+test("a successful or absent upload block adds no warning line", () => {
+  assert.ok(!renderBody({ ...v1, schemaVersion: 4, upload: { mode: "oidc" } }).includes("could not authenticate"));
+  assert.ok(!renderBody({ ...v1, schemaVersion: 4, upload: { mode: "none" } }).includes("could not authenticate"));
+  assert.ok(!renderBody(v1).includes("could not authenticate"));
+});
