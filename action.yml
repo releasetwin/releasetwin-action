@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: ReleaseTwin PR annotations
 description: >
-  Run ReleaseTwin cases and render the result onto the pull request as a comment and a
-  check run. Uses only the workflow's GITHUB_TOKEN — no ReleaseTwin account or hosted call.
+  Runs ReleaseTwin cases and posts the result as a PR comment and check run. No account needed.
 author: ReleaseTwin contributors
 branding:
   icon: check-circle
